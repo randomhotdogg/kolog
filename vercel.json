@@ -1,7 +1,13 @@
 {
   "functions": {
-    "api/**/*.py": {
-      "runtime": "@vercel/python"
+    "api/youtube-transcript.py": {
+      "runtime": "python3.12"
+    },
+    "api/youtube-transcript-simple.py": {
+      "runtime": "python3.12"
+    },
+    "api/test-python.py": {
+      "runtime": "python3.12"
     }
   }
 }
