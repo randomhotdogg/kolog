@@ -1,4 +1,3 @@
-from http.server import BaseHTTPRequestHandler
 import json
 import re
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -127,26 +126,32 @@ def get_transcript(video_url):
             'error': f'處理 YouTube URL 時發生錯誤：{str(e)}'
         }
 
-class handler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        # 設定 CORS 標頭
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
-        
+def handler(req, res):
+    """Vercel Python Function handler - 官方格式"""
+    
+    # 設定 CORS 標頭
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    
+    # 處理 OPTIONS 預檢請求
+    if req.method == 'OPTIONS':
+        res.status(200).end()
+        return
+    
+    # 處理 POST 請求
+    if req.method == 'POST':
         try:
-            # 讀取請求內容
-            content_length = int(self.headers.get('Content-Length', 0))
-            if content_length > 0:
-                body = self.rfile.read(content_length)
-                data = json.loads(body.decode('utf-8'))
+            # 解析請求體
+            if hasattr(req, 'body'):
+                data = json.loads(req.body) if isinstance(req.body, str) else req.body
+            elif hasattr(req, 'get_json'):
+                data = req.get_json() or {}
             else:
                 data = {}
             
-            video_url = data.get('url')
+            video_url = data.get('url') if data else None
             if not video_url:
                 result = {
                     'success': False,
@@ -156,31 +161,24 @@ class handler(BaseHTTPRequestHandler):
                 result = get_transcript(video_url)
             
             # 回傳 JSON 結果
-            response_json = json.dumps(result, ensure_ascii=False)
-            self.wfile.write(response_json.encode('utf-8'))
+            res.status(200).json(result)
             
         except json.JSONDecodeError:
             error_result = {
                 'success': False,
                 'error': '無效的 JSON 格式'
             }
-            response_json = json.dumps(error_result, ensure_ascii=False)
-            self.wfile.write(response_json.encode('utf-8'))
+            res.status(400).json(error_result)
         except Exception as e:
             error_result = {
                 'success': False,
                 'error': f'伺服器內部錯誤: {str(e)}'
             }
-            response_json = json.dumps(error_result, ensure_ascii=False)
-            self.wfile.write(response_json.encode('utf-8'))
-        
-        return
-    
-    def do_OPTIONS(self):
-        # 處理 CORS 預檢請求
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
-        return
+            res.status(500).json(error_result)
+    else:
+        # 不支援的 HTTP 方法
+        error_result = {
+            'success': False,
+            'error': '不支援的 HTTP 方法'
+        }
+        res.status(405).json(error_result)

@@ -1,7 +1,8 @@
 {
-  "functions": {
-    "api/youtube-transcript.py": {
-      "runtime": "python3.9"
-    }
-  }
+  "builds": [
+    { "src": "api/youtube-transcript.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/api/youtube-transcript", "dest": "api/youtube-transcript.py" }
+  ]
 }
