@@ -31,59 +31,41 @@ def get_transcript(video_url):
         
         # 嘗試獲取逐字稿（優先中文，其次英文）
         try:
-            ytt_api = YouTubeTranscriptApi()
-            transcript_list = ytt_api.list(video_id)
-            
-            # 檢查是否有可用的逐字稿
-            available_transcripts = list(transcript_list)
-            if not available_transcripts:
-                return {
-                    'success': False,
-                    'error': '此影片沒有可用的逐字稿'
-                }
-            
-            # 嘗試獲取逐字稿的優先順序
-            transcript = None
+            # 直接嘗試獲取逐字稿，按語言優先順序
+            transcript_data = None
+            language_used = None
             
             # 1. 優先中文
             for lang in ['zh-TW', 'zh-CN', 'zh']:
                 try:
-                    transcript = transcript_list.find_transcript([lang])
+                    transcript_data = YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
+                    language_used = lang
                     break
                 except:
                     continue
             
             # 2. 其次英文
-            if not transcript:
+            if not transcript_data:
                 try:
-                    transcript = transcript_list.find_transcript(['en'])
+                    transcript_data = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+                    language_used = 'en'
                 except:
                     pass
             
-            # 3. 最後嘗試任何手動創建的逐字稿
-            if not transcript:
+            # 3. 最後嘗試任何可用的逐字稿
+            if not transcript_data:
                 try:
-                    transcript = transcript_list.find_manually_created_transcript()
+                    transcript_data = YouTubeTranscriptApi.get_transcript(video_id)
+                    language_used = 'auto'
                 except:
                     pass
             
-            # 4. 最後嘗試任何自動生成的逐字稿
-            if not transcript:
-                try:
-                    transcript = transcript_list.find_generated_transcript()
-                except:
-                    pass
-            
-            # 如果仍然沒有找到逐字稿
-            if not transcript:
-                available_langs = [t.language_code for t in available_transcripts]
+            # 如果仍然沒有獲取到逐字稿
+            if not transcript_data:
                 return {
                     'success': False,
-                    'error': f'無法獲取逐字稿，可用語言: {", ".join(available_langs)}'
+                    'error': '此影片沒有可用的逐字稿（可能是私人影片、已刪除或不支援逐字稿）'
                 }
-            
-            # 獲取逐字稿數據
-            transcript_data = transcript.fetch()
             
             # 格式化為純文字
             formatter = TextFormatter()
@@ -99,7 +81,7 @@ def get_transcript(video_url):
             return {
                 'success': True,
                 'transcript': transcript_text,
-                'language': transcript.language_code,
+                'language': language_used,
                 'video_id': video_id
             }
             
