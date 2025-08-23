@@ -1,9 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { exec } from "child_process"
-import { promisify } from "util"
-import path from "path"
-
-const execAsync = promisify(exec)
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,26 +15,32 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // 執行 Python 腳本來獲取逐字稿
-      const scriptPath = path.join(process.cwd(), "scripts", "youtube_transcript.py")
-      const venvPath = path.join(process.cwd(), "venv", "bin", "python")
-      const pythonCommand = `"${venvPath}" "${scriptPath}" "${url}"`
+      // 調用 Vercel Python Function
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'http://localhost:3000'
       
-      const { stdout, stderr } = await execAsync(pythonCommand, {
-        timeout: 30000, // 30秒超時
-        cwd: process.cwd()
+      const pythonFunctionUrl = `${baseUrl}/api/youtube-transcript`
+      
+      const response = await fetch(pythonFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+        // 30秒超時
+        signal: AbortSignal.timeout(30000)
       })
 
-      if (stderr) {
-        console.error("Python script stderr:", stderr)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: '未知錯誤' }))
         return NextResponse.json(
-          { error: "逐字稿提取過程中發生錯誤" },
-          { status: 500 }
+          { error: errorData.error || "逐字稿提取過程中發生錯誤" },
+          { status: response.status }
         )
       }
 
-      // 解析 Python 腳本的輸出
-      const result = JSON.parse(stdout)
+      const result = await response.json()
 
       if (!result.success) {
         return NextResponse.json(
@@ -57,21 +58,21 @@ export async function POST(request: NextRequest) {
       })
 
     } catch (error) {
-      console.error("執行 Python 腳本時發生錯誤:", error)
+      console.error("調用 Python Function 時發生錯誤:", error)
       
       // 檢查是否為超時錯誤
-      if (error instanceof Error && error.message.includes('timeout')) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
         return NextResponse.json(
           { error: "逐字稿提取超時，請稍後再試" },
           { status: 408 }
         )
       }
 
-      // 檢查是否為 Python 環境問題
-      if (error instanceof Error && error.message.includes('python3')) {
+      // 檢查是否為網路錯誤
+      if (error instanceof Error && error.message.includes('fetch')) {
         return NextResponse.json(
-          { error: "系統環境配置錯誤，請聯繫管理員" },
-          { status: 500 }
+          { error: "無法連接到逐字稿服務，請稍後再試" },
+          { status: 503 }
         )
       }
 
