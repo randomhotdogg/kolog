@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/youtube-transcript.py": {
-      "runtime": "python3.9"
+      "runtime": "@vercel/python@5.0.0"
     }
   }
 }
