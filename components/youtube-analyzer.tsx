@@ -158,7 +158,7 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
 
     try {
       // 第一步：獲取 YouTube 逐字稿
-      const transcriptResponse = await fetch("/api/youtube", {
+      const transcriptResponse = await fetch("/api/youtube-transcript", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: youtubeUrl.trim() })
