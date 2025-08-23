@@ -1,29 +1,214 @@
-def handler(req, res):
-    """測試用的簡化版本"""
+from http.server import BaseHTTPRequestHandler
+import json
+import re
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.formatters import TextFormatter
+
+def extract_video_id(url):
+    """從 YouTube URL 提取影片 ID"""
+    patterns = [
+        r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([a-zA-Z0-9_-]{11})',
+        r'youtube\.com/watch\?.*v=([a-zA-Z0-9_-]{11})',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    
+    return None
+
+def get_transcript(video_url):
+    """獲取 YouTube 影片的逐字稿"""
     try:
-        # 直接回傳成功訊息
-        result = {
-            'success': True,
-            'message': 'Python Function 測試成功！',
-            'method': req.method if hasattr(req, 'method') else 'unknown',
-            'timestamp': '2025-08-23'
-        }
+        # 提取影片 ID
+        video_id = extract_video_id(video_url)
+        if not video_id:
+            return {
+                'success': False,
+                'error': '無效的 YouTube URL'
+            }
         
-        # 嘗試設定標頭和回傳結果
-        if hasattr(res, 'setHeader'):
-            res.setHeader('Content-Type', 'application/json')
-            res.setHeader('Access-Control-Allow-Origin', '*')
-        
-        if hasattr(res, 'json'):
-            res.status(200).json(result)
-        else:
-            # 備用方法
-            return result
+        # 嘗試獲取逐字稿（優先中文，其次英文）
+        try:
+            ytt_api = YouTubeTranscriptApi()
+            transcript_list = ytt_api.list(video_id)
+            
+            # 檢查是否有可用的逐字稿
+            available_transcripts = list(transcript_list)
+            if not available_transcripts:
+                return {
+                    'success': False,
+                    'error': '此影片沒有可用的逐字稿'
+                }
+            
+            # 嘗試獲取逐字稿的優先順序
+            transcript = None
+            
+            # 1. 優先中文
+            for lang in ['zh-TW', 'zh-CN', 'zh']:
+                try:
+                    transcript = transcript_list.find_transcript([lang])
+                    break
+                except:
+                    continue
+            
+            # 2. 其次英文
+            if not transcript:
+                try:
+                    transcript = transcript_list.find_transcript(['en'])
+                except:
+                    pass
+            
+            # 3. 最後嘗試任何手動創建的逐字稿
+            if not transcript:
+                try:
+                    transcript = transcript_list.find_manually_created_transcript()
+                except:
+                    pass
+            
+            # 4. 最後嘗試任何自動生成的逐字稿
+            if not transcript:
+                try:
+                    transcript = transcript_list.find_generated_transcript()
+                except:
+                    pass
+            
+            # 如果仍然沒有找到逐字稿
+            if not transcript:
+                available_langs = [t.language_code for t in available_transcripts]
+                return {
+                    'success': False,
+                    'error': f'無法獲取逐字稿，可用語言: {", ".join(available_langs)}'
+                }
+            
+            # 獲取逐字稿數據
+            transcript_data = transcript.fetch()
+            
+            # 格式化為純文字
+            formatter = TextFormatter()
+            transcript_text = formatter.format_transcript(transcript_data)
+            
+            # 檢查逐字稿是否為空
+            if not transcript_text or len(transcript_text.strip()) < 10:
+                return {
+                    'success': False,
+                    'error': '獲取的逐字稿內容過短或為空'
+                }
+            
+            return {
+                'success': True,
+                'transcript': transcript_text,
+                'language': transcript.language_code,
+                'video_id': video_id
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            if "Could not retrieve a transcript" in error_msg:
+                return {
+                    'success': False,
+                    'error': '此影片沒有可用的逐字稿（可能是私人影片、已刪除或不支援逐字稿）'
+                }
+            elif "no element found" in error_msg:
+                return {
+                    'success': False,
+                    'error': '影片無法存取或已被移除'
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': f'獲取逐字稿時發生錯誤：{error_msg}'
+                }
             
     except Exception as e:
-        # 如果有任何錯誤，回傳錯誤資訊
         return {
             'success': False,
-            'error': f'Function 錯誤: {str(e)}',
-            'timestamp': '2025-08-23'
+            'error': f'處理 YouTube URL 時發生錯誤：{str(e)}'
         }
+
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        try:
+            # 設定回應標頭
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+            self.end_headers()
+            
+            # 讀取請求內容
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                result = {
+                    'success': False,
+                    'error': '請求內容不能為空'
+                }
+            else:
+                body = self.rfile.read(content_length)
+                try:
+                    data = json.loads(body.decode('utf-8'))
+                    url = data.get('url', '').strip()
+                    
+                    if not url:
+                        result = {
+                            'success': False,
+                            'error': 'YouTube URL 為必填項目'
+                        }
+                    else:
+                        # 驗證是否為有效的 YouTube URL
+                        youtube_regex = r'^https?://(www\.)?(youtube\.com/(watch\?v=|embed/)|youtu\.be/)[\w-]+'
+                        if not re.match(youtube_regex, url):
+                            result = {
+                                'success': False,
+                                'error': '請提供有效的 YouTube URL'
+                            }
+                        else:
+                            # 獲取逐字稿
+                            result = get_transcript(url)
+                            
+                except json.JSONDecodeError:
+                    result = {
+                        'success': False,
+                        'error': '無效的 JSON 格式'
+                    }
+            
+        except Exception as e:
+            result = {
+                'success': False,
+                'error': f'伺服器內部錯誤：{str(e)}'
+            }
+        
+        # 回傳 JSON 結果
+        response_json = json.dumps(result, ensure_ascii=False)
+        self.wfile.write(response_json.encode('utf-8'))
+        return
+    
+    def do_OPTIONS(self):
+        # 處理 CORS preflight 請求
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+        return
+    
+    def do_GET(self):
+        # 提供基本的狀態檢查
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        
+        result = {
+            'success': True,
+            'message': 'YouTube 逐字稿 API 運作正常',
+            'endpoint': '/api/youtube-transcript',
+            'method': 'POST',
+            'required_fields': ['url']
+        }
+        
+        response_json = json.dumps(result, ensure_ascii=False)
+        self.wfile.write(response_json.encode('utf-8'))
+        return
