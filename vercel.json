@@ -1,7 +1,4 @@
 {
-  "builds": [
-    { "src": "api/youtube-transcript.py", "use": "@vercel/python" }
-  ],
   "routes": [
     { "src": "/api/youtube-transcript", "dest": "api/youtube-transcript.py" }
   ]
