@@ -5,7 +5,18 @@ import sys
 import traceback
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import TextFormatter
-from youtube_transcript_api._errors import TranscriptsDisabled, VideoUnavailable, TooManyRequests, RequestBlocked
+try:
+    from youtube_transcript_api._errors import TranscriptsDisabled, VideoUnavailable, TooManyRequests, RequestBlocked
+except ImportError:
+    # 如果無法導入具體的錯誤類別，使用通用的 Exception
+    class TranscriptsDisabled(Exception):
+        pass
+    class VideoUnavailable(Exception):
+        pass
+    class TooManyRequests(Exception):
+        pass
+    class RequestBlocked(Exception):
+        pass
 
 def extract_video_id(url):
     """從 YouTube URL 提取影片 ID"""
