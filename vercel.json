@@ -1,5 +1,5 @@
 {
-  "routes": [
-    { "src": "/api/youtube-transcript", "dest": "api/youtube-transcript.py" }
+  "rewrite": [
+    { "source": "/api/(.*)", "destination": "/api" }
   ]
 }
