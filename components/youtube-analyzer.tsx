@@ -158,7 +158,8 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
 
     try {
       // 第一步：獲取 YouTube 逐字稿
-      const transcriptResponse = await fetch("/api/youtube", {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_YOUTUBE_API_BASE_URL || 'http://localhost:8000/api/v1'
+      const transcriptResponse = await fetch(`${apiBaseUrl}/youtube/transcript`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: youtubeUrl.trim() })
@@ -181,12 +182,12 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
 
       if (youtubeApiKey.trim()) {
         try {
-          const metadataResponse = await fetch("/api/youtube-metadata", {
+          const metadataResponse = await fetch(`${apiBaseUrl}/youtube/metadata`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              videoId: transcriptData.videoId,
-              apiKey: youtubeApiKey.trim()
+              video_id: transcriptData.video_id,
+              api_key: youtubeApiKey.trim()
             })
           })
 
@@ -194,7 +195,7 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
             const metadataData = await metadataResponse.json()
             if (metadataData.success) {
               videoMetadata = metadataData.metadata
-              publishDate = new Date(metadataData.publishDate)
+              publishDate = new Date(metadataData.publish_date)
               dateSource = "api"
             }
           }
@@ -210,13 +211,13 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
       }
 
       // 第三步：AI 分析
-      const analysisResponse = await fetch("/api/gemini", {
+      const analysisResponse = await fetch(`${apiBaseUrl}/analysis/gemini`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           transcript: transcriptData.transcript,
-          apiKey: apiKey.trim(),
-          videoUrl: youtubeUrl.trim()
+          api_key: apiKey.trim(),
+          video_url: youtubeUrl.trim()
         })
       })
 
@@ -396,7 +397,6 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
         keyPoints: stockAnalysis.keyPoints,
         publishDate: trackingStartDate,
         dateSource: analysisResult?.dateSource || "fallback",
-        mentionedCompanies: processedMentionedCompanies
       }
 
       addTrackedStockWithYouTubeAnalysis(
