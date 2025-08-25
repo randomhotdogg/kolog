@@ -231,14 +231,29 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
       // 將元數據資訊加入分析結果
       const enhancedAnalysis = {
         ...analysisData.analysis,
-        videoTitle: videoMetadata?.title,
+        videoTitle: videoMetadata?.title || analysisData.analysis.video_title,
         author: videoMetadata?.channelTitle,
         publishDate: publishDate.toISOString(),
-        dateSource: dateSource
+        dateSource: dateSource,
+        // 統一欄位命名：後端使用 snake_case，前端轉換為 camelCase
+        stockAnalyses: (analysisData.analysis.stock_analyses || []).map((stock: any) => ({
+          ...stock,
+          companyName: stock.company_name || stock.companyName,
+          mentionType: stock.mention_type || stock.mentionType,
+          keyPoints: stock.key_points || stock.keyPoints || [],
+          identificationReason: stock.identification_reason || stock.identificationReason,
+          contextQuote: stock.context_quote || stock.contextQuote
+        })),
+        mentionedCompanies: (analysisData.analysis.mentioned_companies || []).map((company: any) => ({
+          ...company,
+          companyName: company.company_name || company.companyName,
+          mentionType: company.mention_type || company.mentionType
+        })),
+        overallSentiment: analysisData.analysis.overall_sentiment
       }
       
       // 第四步：自動化處理提及的公司，轉換為股票代號
-      let finalStockAnalyses = [...enhancedAnalysis.stockAnalyses]
+      let finalStockAnalyses = [...(enhancedAnalysis.stockAnalyses || [])]
       const processedMentionedCompanies = []
       
       if (enhancedAnalysis.mentionedCompanies && enhancedAnalysis.mentionedCompanies.length > 0) {
@@ -246,6 +261,12 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
         
         for (const mentionedCompany of enhancedAnalysis.mentionedCompanies) {
           try {
+            // 跳過沒有公司名稱的項目
+            if (!mentionedCompany.companyName) {
+              console.log('跳過空的公司名稱')
+              continue
+            }
+            
             console.log(`搜索公司: ${mentionedCompany.companyName}`)
             
             // 查詢股票代號
@@ -609,6 +630,7 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
                 <TableHead className="font-medium text-gray-700">公司名稱</TableHead>
                 <TableHead className="font-medium text-gray-700 w-[100px]">投資觀點</TableHead>
                 <TableHead className="font-medium text-gray-700 w-[120px] text-center">信心度</TableHead>
+                <TableHead className="font-medium text-gray-700 w-[80px] text-center">動作</TableHead>
                 <TableHead className="font-medium text-gray-700 w-[60px] text-center">詳情</TableHead>
               </TableRow>
             </TableHeader>
@@ -638,6 +660,38 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
                         {renderConfidenceStars(stock.confidence)}
                       </TableCell>
                       <TableCell className="text-center">
+                        {addedStocks.has(stock.symbol) ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled
+                            className="text-green-600 border-green-300 bg-green-50"
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            已追蹤
+                          </Button>
+                        ) : isStockTracked(stock.symbol) ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled
+                            className="text-orange-600 border-orange-300 bg-orange-50"
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            已存在
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => handleAddToTracking(stock)}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            追蹤
+                          </Button>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -656,7 +710,7 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
                     {/* 展開詳情行 */}
                     {isExpanded && (
                       <TableRow className="hover:bg-transparent border-0">
-                        <TableCell colSpan={5} className="p-0">
+                        <TableCell colSpan={6} className="p-0">
                           <div className="bg-gray-50/50 p-4 border-t border-gray-200/30 max-w-full overflow-hidden">
                             {renderExpandedContent(stock, originalIndex)}
                           </div>
@@ -688,7 +742,7 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
         </div>
         
         {/* 關鍵論點 */}
-        {stock.keyPoints.length > 0 && (
+        {stock.keyPoints && stock.keyPoints.length > 0 && (
           <div>
             <h6 className="text-sm font-medium text-gray-900 mb-2">關鍵論點</h6>
             <ul className="space-y-2">
@@ -946,18 +1000,18 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
             {/* 影片資訊 skeleton */}
             <div className="space-y-3">
               <Skeleton className="h-4 w-20" />
-              <div className="p-4 bg-blue-50 rounded-lg space-y-2">
+              <div className="p-4 bg-red-50 rounded-lg space-y-2">
                 <Skeleton className="h-5 w-3/4" />
                 <div className="flex items-center gap-4">
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-3 w-28" />
                 </div>
               </div>
             </div>
 
             {/* 影片摘要 skeleton */}
             <div className="space-y-3">
-              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-20" />
               <div className="p-4 bg-gray-50 rounded-lg space-y-2">
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-3 w-5/6" />
@@ -967,32 +1021,62 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
 
             {/* 整體市場觀點 skeleton */}
             <div className="space-y-3">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-6 w-24 rounded-full" />
             </div>
 
-            {/* 股票分析結果 skeleton */}
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-32" />
-              <div className="space-y-4">
-                <Card className="border border-gray-200">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2 flex-1">
-                        <Skeleton className="h-5 w-40" />
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-5 w-16" />
-                          <Skeleton className="h-4 w-20" />
+            {/* 股票分析結果 skeleton - 只顯示主要投資標的表格 */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-8 w-20 rounded-md" />
+              </div>
+              
+              {/* 主要投資標的表格 skeleton */}
+              <div className="rounded-xl border bg-green-50/80 border-green-200 overflow-hidden">
+                {/* 標題區域 */}
+                <div className="p-4 border-b border-gray-200/50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🎯</span>
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+                
+                {/* 表格區域 */}
+                <div className="bg-white/80 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    {/* 表頭 skeleton */}
+                    <div className="border-b border-gray-200/50 p-4">
+                      <div className="grid grid-cols-6 gap-4">
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-3 w-12" />
+                        <Skeleton className="h-3 w-12" />
+                      </div>
+                    </div>
+                    
+                    {/* 表格行 skeleton */}
+                    {[1, 2].map((i) => (
+                      <div key={i} className="border-b border-gray-200/30 p-4">
+                        <div className="grid grid-cols-6 gap-4 items-center">
+                          <Skeleton className="h-4 w-14 font-bold" />
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-5 w-16 rounded-full" />
+                          <div className="flex items-center gap-1">
+                            <Skeleton className="h-3 w-3 rounded-full" />
+                            <Skeleton className="h-3 w-3 rounded-full" />
+                            <Skeleton className="h-3 w-3 rounded-full" />
+                            <Skeleton className="h-3 w-8 ml-1" />
+                          </div>
+                          <Skeleton className="h-8 w-16 rounded-md" />
+                          <Skeleton className="h-8 w-8 rounded-md" />
                         </div>
                       </div>
-                      <Skeleton className="h-8 w-20" />
-                    </div>
-                    <div className="space-y-2">
-                      <Skeleton className="h-3 w-full" />
-                      <Skeleton className="h-3 w-4/5" />
-                    </div>
-                  </CardContent>
-                </Card>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

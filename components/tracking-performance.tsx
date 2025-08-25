@@ -284,7 +284,7 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
               </div>
             </div>
             <ChartContainer config={chartConfig} className="flex-1 w-full min-h-0">
-              <LineChart data={chartData} margin={{ top: 35, right: 20, left: 10, bottom: 10 }}>
+              <LineChart data={chartData} margin={{ top: 35, right: 40, left: 10, bottom: 10 }}>
                 <XAxis 
                   dataKey="date" 
                   axisLine={false} 
@@ -319,8 +319,13 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
                     // 追蹤起始點標記
                     if (payload.timestamp === startPoint.timestamp) {
                       const startPointColor = isPositive ? "#10B981" : "#EF4444"
+                      const labelY = cy - 100 // 向上移動更多
+                      const dashLineY1 = labelY + 16 // 標籤底部
+                      const dashLineY2 = cy - 8 // 圓點上方
+                      
                       return (
                         <g key={`start-${payload.timestamp}`}>
+                          {/* 數據點圓圈 */}
                           <circle 
                             cx={cx} 
                             cy={cy} 
@@ -329,18 +334,35 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
                             stroke="#fff" 
                             strokeWidth={2}
                           />
+                          
+                          {/* 虛線連接 */}
+                          <line
+                            x1={cx}
+                            y1={dashLineY1}
+                            x2={cx}
+                            y2={dashLineY2}
+                            stroke={startPointColor}
+                            strokeWidth={1.5}
+                            strokeDasharray="3,3"
+                            opacity={0.8}
+                          />
+                          
+                          {/* 標籤背景 */}
                           <rect
                             x={cx - 20}
-                            y={cy - 28}
+                            y={labelY}
                             width={40}
                             height={16}
                             rx={8}
                             fill={startPointColor}
-                            fillOpacity={0.9}
+                            fillOpacity={0.95}
+                            filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
                           />
+                          
+                          {/* 標籤文字 */}
                           <text 
                             x={cx} 
-                            y={cy - 16} 
+                            y={labelY + 12} 
                             textAnchor="middle" 
                             className="text-xs font-medium"
                             fill="#fff"
