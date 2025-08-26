@@ -6,6 +6,7 @@ import { BarChart3 } from "lucide-react"
 import { TrackingSidebar } from "@/components/tracking-sidebar"
 import { TrackingPerformanceDisplay } from "@/components/tracking-performance"
 import NavigationMenu from "@/components/navigation-menu"
+import { ProtectedRoute } from "@/components/protected-route"
 import {
   getTrackedStocks,
   addTrackedStock,
@@ -126,8 +127,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-white">
-      <NavigationMenu className="sticky top-0 z-50" />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-white">
+        <NavigationMenu className="sticky top-0 z-50" />
 
       <div className="px-4 py-8">
         <div className="max-w-screen-2xl mx-auto">
@@ -195,6 +197,7 @@ export default function DashboardPage() {
           </section>
         </div>
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }
