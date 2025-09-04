@@ -284,7 +284,7 @@ export function TrackingSidebar({
             {isMobile ? (
               <Drawer open={isAddingStock} onOpenChange={setIsAddingStock}>
                 <DrawerTrigger asChild>
-                  <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-2 rounded-lg">
+                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2 rounded-lg">
                     新增追蹤
                   </Button>
                 </DrawerTrigger>
@@ -300,7 +300,7 @@ export function TrackingSidebar({
             ) : (
               <Popover open={isAddingStock} onOpenChange={setIsAddingStock}>
                 <PopoverTrigger asChild>
-                  <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-2 rounded-lg">
+                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2 rounded-lg">
                     新增追蹤
                   </Button>
                 </PopoverTrigger>
@@ -469,7 +469,7 @@ export function TrackingSidebar({
             {isMobile ? (
               <Drawer open={isAddingStock} onOpenChange={setIsAddingStock}>
                 <DrawerTrigger asChild>
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg py-2">
+                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2">
                     新增追蹤
                   </Button>
                 </DrawerTrigger>
@@ -485,7 +485,7 @@ export function TrackingSidebar({
             ) : (
               <Popover open={isAddingStock} onOpenChange={setIsAddingStock}>
                 <PopoverTrigger asChild>
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg py-2">
+                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2">
                     新增追蹤
                   </Button>
                 </PopoverTrigger>
