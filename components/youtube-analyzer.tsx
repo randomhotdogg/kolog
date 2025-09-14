@@ -91,7 +91,13 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
   const [youtubeApiKey, setYoutubeApiKey] = useState("")
   const [showApiKey, setShowApiKey] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | {
+    type: string
+    message: string
+    reason?: string
+    confidence?: number
+    relevanceLevel?: string
+  } | null>(null)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [transcript, setTranscript] = useState<string | null>(null)
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false)
@@ -157,18 +163,32 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
     setAddedStocks(new Set()) // 重置已加入追蹤的狀態
 
     try {
-      // 第一步：獲取 YouTube 逐字稿
+      // 第一步：獲取 YouTube 逐字稿並檢查美股相關性
       const apiBaseUrl = process.env.NEXT_PUBLIC_YOUTUBE_API_BASE_URL || 'http://localhost:8000/api/v1'
       const transcriptResponse = await fetch(`${apiBaseUrl}/youtube/transcript`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: youtubeUrl.trim() })
+        body: JSON.stringify({ 
+          url: youtubeUrl.trim(),
+          api_key: apiKey.trim() // 傳入 API Key 進行相關性檢查
+        })
       })
 
       const transcriptData = await transcriptResponse.json()
 
       if (!transcriptResponse.ok) {
-        setError(transcriptData.error || "無法獲取影片逐字稿")
+        // 特別處理相關性檢查失敗的情況
+        if (transcriptResponse.status === 422 && transcriptData.error?.error_type === "CONTENT_NOT_RELEVANT") {
+          setError({
+            type: "CONTENT_NOT_RELEVANT",
+            message: transcriptData.error.error || "此影片內容與美股討論無關，無法進行分析",
+            reason: transcriptData.error.relevance_reason,
+            confidence: transcriptData.error.confidence,
+            relevanceLevel: transcriptData.error.relevance_level
+          })
+        } else {
+          setError(transcriptData.error?.error || transcriptData.detail || "無法獲取影片逐字稿")
+        }
         return
       }
 
@@ -980,7 +1000,18 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  {typeof error === 'string' ? error : (
+                    <div className="space-y-2">
+                      <div className="font-medium">{error.message}</div>
+                      {error.type === "CONTENT_NOT_RELEVANT" && error.reason && (
+                        <div className="text-sm opacity-90">
+                          <strong>分析依據：</strong>{error.reason}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
           </div>
@@ -1176,8 +1207,8 @@ export function YouTubeAnalyzer({ onStockAdded }: YouTubeAnalyzerProps) {
         </Card>
       )}
 
-      {/* 逐字稿內容 */}
-      {transcript && (
+      {/* 逐字稿內容 - 只有在沒有相關性錯誤時才顯示 */}
+      {transcript && !(typeof error === 'object' && error?.type === "CONTENT_NOT_RELEVANT") && (
         <Card className="border-0 shadow-lg bg-white/60 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-lg font-semibold text-gray-800 flex items-center justify-between">

@@ -272,7 +272,7 @@ export function TrackingSidebar({
 
   if (trackedStocks.length === 0) {
     return (
-      <Card className="h-full border-0 shadow-xl bg-white/60 backdrop-blur-sm">
+      <Card className="h-full border-0 shadow-xl bg-white/90 backdrop-blur-sm">
         <CardContent className="p-6">
           <div className="text-center">
             <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -316,7 +316,7 @@ export function TrackingSidebar({
   }
 
   return (
-    <Card className="h-[calc(100vh-280px)] border-0 shadow-xl bg-white/60 backdrop-blur-sm flex flex-col">
+    <Card className="h-full border-0 shadow-xl bg-white/90 backdrop-blur-sm flex flex-col">
       <CardHeader className="pb-1">
         <CardTitle className="text-base font-semibold text-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -460,7 +460,7 @@ export function TrackingSidebar({
                 disabled={selectedStocks.size === 0 || isDeleting}
                 className="flex-1"
               >
-                {isDeleting ? "刪除中..." : `刪除選中項目 (${selectedStocks.size})`}
+                {isDeleting ? "刪除中..." : `刪除 (${selectedStocks.size}) 項`}
               </Button>
             </div>
           </div>

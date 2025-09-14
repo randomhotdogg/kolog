@@ -10,7 +10,6 @@ import { ChartContainer, ChartTooltip } from "@/components/ui/chart"
 import { LineChart, Line, XAxis, YAxis } from "recharts"
 import { useState } from "react"
 import { updateTrackedStockName, getTrackedStock } from "@/lib/tracking-storage"
-import { YouTubeAnalysisCard } from "@/components/youtube-analysis-card"
 import type { TrackingPerformance } from "@/lib/tracking-storage"
 
 interface TrackingPerformanceProps {
@@ -24,7 +23,6 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
 
   const trackedStock = getTrackedStock(performance.symbol)
   const displayName = trackedStock?.customName || performance.symbol
-  const hasYouTubeAnalysis = trackedStock?.youtubeAnalysis
 
   const isPositive = performance.priceChange >= 0
   
@@ -147,7 +145,7 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
     }
   }
 
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { timestamp: number; price: number } }>; label?: string }) => {
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length > 0) {
       const data = payload[0].payload
       const dotColor = isPositive ? "#10B981" : "#EF4444"
@@ -181,12 +179,9 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
 
 
   return (
-    <div className="flex flex-col h-[calc(100vh-280px)]">
-
-      {/* 主要內容區域 - 響應式佈局 */}
-      <div className="flex flex-col xl:flex-row flex-1 gap-4 min-h-0">
-        {/* 圖表卡片 - 最大空間 */}
-        <Card className={`${hasYouTubeAnalysis ? 'xl:flex-[55]' : 'xl:flex-[70]'} border-0 shadow-xl bg-white/60 backdrop-blur-sm flex flex-col h-full min-w-0`}>
+    <div className="flex flex-col h-full">
+      {/* 圖表卡片 - 佔滿整個面板 */}
+      <Card className="border-0 shadow-xl bg-white/60 backdrop-blur-sm flex flex-col h-full">
           <CardContent className="flex flex-col h-full">
             <div className="pb-3 flex-shrink-0">
               {/* 整合的標題區域 */}
@@ -319,9 +314,11 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
                     // 追蹤起始點標記
                     if (payload.timestamp === startPoint.timestamp) {
                       const startPointColor = isPositive ? "#10B981" : "#EF4444"
-                      const labelY = cy - 100 // 向上移動更多
-                      const dashLineY1 = labelY + 16 // 標籤底部
-                      const dashLineY2 = cy - 8 // 圓點上方
+                      // 智能定位：如果太接近頂部，則放在下方
+                      const shouldPlaceBelow = cy < 120
+                      const labelY = shouldPlaceBelow ? cy + 50 : cy - 100
+                      const dashLineY1 = shouldPlaceBelow ? labelY : labelY + 16 // 標籤端
+                      const dashLineY2 = shouldPlaceBelow ? cy + 8 : cy - 8 // 圓點端
                       
                       return (
                         <g key={`start-${payload.timestamp}`}>
@@ -377,6 +374,10 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
                     if (highestReturnData && payload.timestamp === highestReturnData.timestamp) {
                       const labelText = `+${highestReturnData.returnPercent.toFixed(1)}%`
                       const labelWidth = Math.max(labelText.length * 6 + 12, 50) // 確保最小寬度
+                      // 智能定位：如果太接近頂部，則放在下方
+                      const shouldPlaceBelow = cy < 50
+                      const labelY = shouldPlaceBelow ? cy + 28 : cy - 28
+                      const textY = shouldPlaceBelow ? cy + 40 : cy - 16
                       
                       return (
                         <g key={`highest-${payload.timestamp}`}>
@@ -390,7 +391,7 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
                           />
                           <rect
                             x={cx - labelWidth/2}
-                            y={cy - 28}
+                            y={labelY}
                             width={labelWidth}
                             height={16}
                             rx={8}
@@ -399,7 +400,7 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
                           />
                           <text 
                             x={cx} 
-                            y={cy - 16} 
+                            y={textY} 
                             textAnchor="middle" 
                             className="text-xs font-medium"
                             fill="#fff"
@@ -419,19 +420,6 @@ export function TrackingPerformanceDisplay({ performance, onNameUpdate }: Tracki
             </ChartContainer>
           </CardContent>
         </Card>
-
-
-        {/* YouTube 分析卡片 - 文字內容優先 */}
-        {hasYouTubeAnalysis && (
-          <div className="xl:flex-[25] min-w-0">
-            <YouTubeAnalysisCard 
-              analysis={hasYouTubeAnalysis} 
-              className="h-full border-0 shadow-xl bg-white/60 backdrop-blur-sm" 
-            />
-          </div>
-        )}
-      </div>
-
     </div>
   )
 }

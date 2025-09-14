@@ -8,6 +8,12 @@ import { TrackingPerformanceDisplay } from "@/components/tracking-performance"
 import NavigationMenu from "@/components/navigation-menu"
 import { ProtectedRoute } from "@/components/protected-route"
 import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable"
+import { YouTubeAnalysisCard } from "@/components/youtube-analysis-card"
+import {
   getTrackedStocks,
   addTrackedStock,
   removeTrackedStock,
@@ -128,71 +134,94 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-white">
+      <div className="min-h-screen bg-white">
         <NavigationMenu className="sticky top-0 z-50" />
 
-      <div className="px-4 py-8">
-        <div className="max-w-screen-2xl mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto">
           {/* 追蹤頁面 */}
-          <section id="tracking-section" className="-mx-4 px-2">
+          <section id="tracking-section" className="px-2">
             {/* 擴展寬度容器 */}
             <div className="max-w-none mx-auto">
-                <div className="text-center mb-6 md:mb-8">
-                  <h4 className="text-xl md:text-3xl font-bold text-gray-900 mb-2 md:mb-3">
-                    投資追蹤
-                    <span className="block text-sm md:text-lg font-normal text-gray-600 mt-1 md:mt-2">
-                      管理您的股票投資組合，追蹤績效表現
-                    </span>
-                  </h4>
-                </div>
                 
-                {/* 左右分欄佈局 */}
-                <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[600px]">
-                {/* 左側追蹤清單 */}
-                <div className="w-full lg:w-72 flex-shrink-0 lg:max-h-[calc(100vh-200px)]">
-                  <TrackingSidebar
-                    trackedStocks={trackedStocks}
-                    selectedStock={selectedTrackedStock}
-                    onSelectStock={handleSelectTrackedStock}
-                    onRemoveStock={handleRemoveFromTracking}
-                    onAddStock={(stock) => {
-                      addTrackedStock(stock)
-                      const updatedStocks = getTrackedStocks()
-                      setTrackedStocks(updatedStocks)
-                      fetchAllStockPrices(updatedStocks)
-                    }}
-                    stockPerformances={allStockPerformances}
-                  />
-                </div>
+                {/* Resizable 面板佈局 */}
+                <ResizablePanelGroup
+                  direction="horizontal" 
+                  className="h-[650px] max-h-[650px] rounded-lg border"
+                >
+                  {/* 左側追蹤清單面板 */}
+                  <ResizablePanel defaultSize={22} minSize={18} maxSize={35}>
+                    <div className="h-full p-4">
+                      <TrackingSidebar
+                        trackedStocks={trackedStocks}
+                        selectedStock={selectedTrackedStock}
+                        onSelectStock={handleSelectTrackedStock}
+                        onRemoveStock={handleRemoveFromTracking}
+                        onAddStock={(stock) => {
+                          addTrackedStock(stock)
+                          const updatedStocks = getTrackedStocks()
+                          setTrackedStocks(updatedStocks)
+                          fetchAllStockPrices(updatedStocks)
+                        }}
+                        stockPerformances={allStockPerformances}
+                      />
+                    </div>
+                  </ResizablePanel>
 
-                {/* 右側詳細資訊 */}
-                <div className="flex-1 min-w-0">
-                  {trackingPerformance ? (
-                    <TrackingPerformanceDisplay
-                      performance={trackingPerformance}
-                      onNameUpdate={() => {
-                        setTrackedStocks(getTrackedStocks())
-                      }}
-                    />
-                  ) : (
-                    <Card className="h-[calc(100vh-280px)] border-0 shadow-xl bg-white/60 backdrop-blur-sm">
-                      <CardContent className="flex flex-col items-center justify-center h-full py-16">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                          <BarChart3 className="h-8 w-8 text-gray-400" />
-                        </div>
-                        <p className="text-gray-600 text-center max-w-md">
-                          請從左側的追蹤清單中選擇
-                        </p>
-                        {trackedStocks.length === 0 && (
-                          <p className="text-sm text-gray-500 mt-4">
-                            還沒有追蹤任何股票？可以在追蹤清單中直接新增追蹤！
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
+                  <ResizableHandle withHandle />
+
+                  {/* 中間圖表面板 */}
+                  <ResizablePanel 
+                    defaultSize={selectedTrackedStock && trackedStocks.find(stock => stock.symbol === selectedTrackedStock)?.youtubeAnalysis ? 53 : 78}
+                    minSize={35} 
+                    maxSize={82}
+                  >
+                    <div className="h-full p-4">
+                      {trackingPerformance ? (
+                        <TrackingPerformanceDisplay
+                          performance={trackingPerformance}
+                          onNameUpdate={() => {
+                            setTrackedStocks(getTrackedStocks())
+                          }}
+                        />
+                      ) : (
+                        <Card className="h-full border-0 shadow-xl bg-white/95 backdrop-blur-sm rounded-xl">
+                          <CardContent className="flex flex-col items-center justify-center h-full py-20">
+                            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-8">
+                              <BarChart3 className="h-10 w-10 text-emerald-600" />
+                            </div>
+                            <p className="text-gray-700 text-center max-w-md text-lg font-medium mb-2">
+                              請從左側的追蹤清單中選擇
+                            </p>
+                            {trackedStocks.length === 0 && (
+                              <p className="text-gray-500 mt-6 text-center max-w-sm">
+                                還沒有追蹤任何股票？可以在追蹤清單中直接新增追蹤！
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </ResizablePanel>
+
+                  {/* 右側 YouTube 分析面板 - 只在有分析時顯示 */}
+                  {selectedTrackedStock && (() => {
+                    const currentStock = trackedStocks.find(stock => stock.symbol === selectedTrackedStock)
+                    return currentStock?.youtubeAnalysis && (
+                      <>
+                        <ResizableHandle withHandle />
+                        <ResizablePanel defaultSize={25} minSize={18} maxSize={40}>
+                          <div className="h-full p-4">
+                            <YouTubeAnalysisCard
+                              analysis={currentStock.youtubeAnalysis}
+                              className="h-full border-0 shadow-xl bg-white/95 backdrop-blur-sm rounded-xl"
+                            />
+                          </div>
+                        </ResizablePanel>
+                      </>
+                    )
+                  })()}
+                </ResizablePanelGroup>
             </div>
           </section>
         </div>
